@@ -1,23 +1,76 @@
 <!DOCTYPE html>
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
     <title>RCPCH ROP Window Calculator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
     <style>
+        body {
+            font-family: "Montserrat", sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 1em;
+        }
+
         form {
             display: flex;
             flex-direction: column;
         }
 
+        label {
+            margin-bottom: 0.5em;
+        }
+
         input {
-            margin-bottom: 1em;
+            margin-bottom: 0.8em;
+            font-size: 1.4em;
         }
 
         input:invalid {
             border: 3px solid red;
         }
 
-        #not-eligible, #output {
+        .output {
             display: none;
+            border-top: 1px solid silver;
+            padding: 1em 0;
+        }
+
+        h2 {
+            margin: 0;
+            padding: 0;
+        }
+
+        .screening-window {
+            display: grid;
+            grid-template-columns: 1fr 4fr;
+            column-gap: 1em;
+            row-gap: 0.5em;
+            font-size: 1.4em;
+        }
+
+        .screening-window__label {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .screening-window__label__text {
+            background-color: rgb(51, 102, 204);
+            color: white;
+            font-weight: bold;
+            padding: 0.2em;
+            text-align: center;
+        }
+
+        .screening-window__value {
+            font-size: 1.4em;
+        }
+
+        .screening-window__description {
+            font-size: 0.8em;
+            color: gray;
         }
     </style>
 </head>
@@ -68,7 +121,7 @@
             value="2023-01-01"
         />
     </form>
-    <div id="not-eligible">
+    <div id="not-eligible" class="output">
         <h2>Not Eligible</h2>
         <p>
            All infants less than 31 weeks gestational age (up to and including 30 weeks
@@ -77,17 +130,29 @@
            (Grade: B)]
         </p>
     </div>
-    <div id="output">
-        <div class="window">
-            <h3>Window Start</h3>
-            <div id="window_start">
-
+    <div id="screening-window" class="output">
+        <div class="screening-window">
+            <div class="screening-window__label">
+                <span class="screening-window__label__text">
+                    Start
+                </span>
             </div>
-        </div>
-        <div class="window">
-            <h3>Window End</h3>
+            <div id="window_start">
+                <div id="window_start_date" class="screening-window__value">
+                </div>
+                <div id="window_start_days" class="screening-window__description">
+                </div>
+            </div>
+            <div class="screening-window__label">
+                <span class="screening-window__label__text">
+                    End
+                </span>
+            </div>
             <div id="window_end">
-
+                <div id="window_end_date" class="screening-window__value">
+                </div>
+                <div id="window_end_days" class="screening-window__description">
+                </div>
             </div>
         </div>
     </div>
@@ -96,10 +161,13 @@
         const form = document.querySelector("form");
         
         const notEligiblePanel = document.getElementById("not-eligible");
-        const outputPanel = document.getElementById("output");
+        const screeningWindowPanel = document.getElementById("screening-window");
 
-        const windowStartBox = document.getElementById("window_start");
-        const windowEndBox = document.getElementById("window_end");
+        const windowStartDate = document.getElementById("window_start_date");
+        const windowStartDays = document.getElementById("window_start_days");
+        
+        const windowEndDate = document.getElementById("window_end_date");
+        const windowEndDays = document.getElementById("window_end_days");
 
         function getIntValue(id) {
             return parseInt(document.getElementById(id).value, 10);
@@ -143,7 +211,7 @@
 
         function updateOutput() {
             notEligiblePanel.style.display = 'none';
-            outputPanel.style.display = 'none';
+            screeningWindowPanel.style.display = 'none';
 
             if(form.checkValidity()) {
                 const gestationalAgeWeeks = getIntValue("gestational_age_weeks");
@@ -156,7 +224,7 @@
                 const gestationalAge = (gestationalAgeWeeks * 7) + gestationalAgeDays;
 
                 if(isEligible(gestationalAge, birthWeight)) {
-                    outputPanel.style.display = 'block';
+                    screeningWindowPanel.style.display = 'block';
 
                     const { start, end } = calculateWindow(gestationalAge, dateOfBirth);
 
@@ -167,9 +235,11 @@
                     const endDate = end.toLocaleString(luxon.DateTime.DATE_SHORT);
                     const endDaysFromBirth = end.diff(dateOfBirth, 'days').days;
 
+                    windowStartDate.innerHTML = startDate;
+                    windowStartDays.innerHTML = `${startDaysFromBirth} days from birth`;
                     
-                    windowStartBox.innerHTML = `${startDate} (${startDaysFromBirth} days from birth)`;
-                    windowEndBox.innerHTML = `${endDate} (${endDaysFromBirth} days from birth)`;
+                    windowEndDate.innerHTML = endDate;
+                    windowEndDays.innerHTML = `${endDaysFromBirth} days from birth`;
                 } else {
                     notEligiblePanel.style.display = 'block';
                 }
