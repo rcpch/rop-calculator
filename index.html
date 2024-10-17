@@ -23,24 +23,26 @@
 <body>
     <form>
         <label for="gestational_age_weeks">
-            Gestational age (weeks):
+            Gestational age (weeks) [22-42]:
         </label>
         <input
             id="gestational_age_weeks"
             type="number"
             required
-            min="0"
+            min="22"
+            max="42"
             value="34"
         />
 
         <label for="gestational_age_days">
-            Gestational age (days):
+            Gestational age (days) [0-6]:
         </label>
         <input
             id="gestational_age_days"
             type="number"
             required
             min="0"
+            max="6"
             value="3"
         />
 
@@ -75,26 +77,67 @@
         </p>
     </div>
     <div id="output">
-        output
+        <div class="window">
+            <h3>Window Start</h3>
+            <div id="window_start">
+
+            </div>
+        </div>
+        <div class="window">
+            <h3>Window End</h3>
+            <div id="window_end">
+
+            </div>
+        </div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js"></script>
     <script type="text/javascript">
         const form = document.querySelector("form");
+        
         const notEligiblePanel = document.getElementById("not-eligible");
         const outputPanel = document.getElementById("output");
+
+        const windowStartBox = document.getElementById("window_start");
+        const windowEndBox = document.getElementById("window_end");
 
         function getIntValue(id) {
             return parseInt(document.getElementById(id).value, 10);
         }
 
-        function calculateEligibility(gestationalAgeWeeks, gestationalAgeDays, birthWeight) {
-            const gestationalAge = (gestationalAgeWeeks * 7) + gestationalAgeDays;
-            const maxGestationalAge = (30 * 7) + 6;
+        function isEligible(gestationalAge, birthWeight) {
+            const thirtyWeeksAndSixDays = (30 * 7) + 6;
 
-            return gestationalAge <= maxGestationalAge || birthWeight < 1501;
+            return gestationalAge <= thirtyWeeksAndSixDays || birthWeight < 1501;
         }
 
-        function calculateWindow(gestationalAge) {
+        function calculateWindow(gestationalAgeDays, dateOfBirth) {
+            const thirtyOneWeeks = 31 * 7;
 
+            const postNatalStart = dateOfBirth.plus({ days: 28 });
+
+            let start;
+
+            // For infants born before 31+0 weeks gestational age
+            if(gestationalAgeDays < thirtyOneWeeks) {
+                // the first ROP examination should be performed between 31+0 and 31+6 weeks postmenstrual age
+                // or at 4 completed weeks postnatal age (28–34 days), whichever is later
+                const postMenstrualStart = dateOfBirth.minus({ days: gestationalAgeDays }).plus({ weeks: 31 });
+                console.log({ postMenstrualStart: postMenstrualStart.toISO(), postNatalStart: postNatalStart.toISO() });
+                start = postMenstrualStart > postNatalStart ? postMenstrualStart : postNatalStart;
+            } else {
+                // the first ROP examination should be performed at 36 weeks postmenstrual age or 4 completed
+                // weeks postnatal age (28–34 days), whichever is sooner
+                const postMenstrualStart = dateOfBirth.minus({ days: gestationalAgeDays }).plus({ weeks: 36 });
+                start = postMenstrualStart < postNatalStart ? postMenstrualStart : postNatalStart;
+            }
+
+            if(start < dateOfBirth) {
+                start = dateOfBirth;
+            }
+
+            const end = start.plus({ days: 6 });
+
+            return { start, end };
         }
 
         function updateOutput() {
@@ -105,22 +148,30 @@
                 const gestationalAgeWeeks = getIntValue("gestational_age_weeks");
                 const gestationalAgeDays = getIntValue("gestational_age_days");
                 const birthWeight = getIntValue("birth_weight");
+                
+                const dateOfBirth = luxon.DateTime.fromISO(document.getElementById("date_of_birth").value);
 
+                // Useful page covering definitions: https://embryology.med.unsw.edu.au/embryology/index.php?title=Gestational_Age#Perinatal_Period
                 const gestationalAge = (gestationalAgeWeeks * 7) + gestationalAgeDays;
-                const thirtyWeeksAndSixDays = (30 * 7) + 6;
 
-                if(gestationalAge <= thirtyWeeksAndSixDays || birthWeight < 1501) {
+                if(isEligible(gestationalAge, birthWeight)) {
                     outputPanel.style.display = 'block';
+
+                    const { start, end } = calculateWindow(gestationalAge, dateOfBirth);
+
+                    // DATE_SHORT means US users see MM/DD/YYYY and UK users see DD/MM/YYYY
+                    const startDate = start.toLocaleString(luxon.DateTime.DATE_SHORT);
+                    const startDaysFromBirth = start.diff(dateOfBirth, 'days').days;
+
+                    const endDate = end.toLocaleString(luxon.DateTime.DATE_SHORT);
+                    const endDaysFromBirth = end.diff(dateOfBirth, 'days').days;
+
+                    
+                    windowStartBox.innerHTML = `${startDate} (${startDaysFromBirth} days from birth)`;
+                    windowEndBox.innerHTML = `${endDate} (${endDaysFromBirth} days from birth)`;
                 } else {
                     notEligiblePanel.style.display = 'block';
                 }
-
-                console.log({
-                    gestationalAgeWeeks,
-                    gestationalAgeDays,
-                    birthWeight,
-                    dateOfBirth: document.getElementById("date_of_birth").value
-                })
             }
         }
 
