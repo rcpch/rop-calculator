@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<head>
+    <title>RCPCH ROP Window Calculator</title>
+    <style>
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        input {
+            margin-bottom: 1em;
+        }
+
+        input:invalid {
+            border: 3px solid red;
+        }
+
+        #not-eligible, #output {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <form>
+        <label for="gestational_age_weeks">
+            Gestational age (weeks):
+        </label>
+        <input
+            id="gestational_age_weeks"
+            type="number"
+            required
+            min="0"
+            value="34"
+        />
+
+        <label for="gestational_age_days">
+            Gestational age (days):
+        </label>
+        <input
+            id="gestational_age_days"
+            type="number"
+            required
+            min="0"
+            value="3"
+        />
+
+        <label for="birth_weight">
+            Birth weight (grams):
+        </label>
+        <input
+            id="birth_weight"
+            type="number"
+            value="1151" 
+            required
+            min="0"
+        />
+
+        <label for="date_of_birth">
+            Date of birth:
+        </label>
+        <input
+            id="date_of_birth"
+            type="date"
+            required
+            value="2023-01-01"
+        />
+    </form>
+    <div id="not-eligible">
+        <h2>Not Eligible</h2>
+        <p>
+           All infants less than 31 weeks gestational age (up to and including 30 weeks
+           and 6 days) OR less than 1501g birth weight should be examined to screen for
+           the presence of ROP (one criterion to be met for inclusion) [Evidence level: High
+           (Grade: B)]
+        </p>
+    </div>
+    <div id="output">
+        output
+    </div>
+    <script type="text/javascript">
+        const form = document.querySelector("form");
+        const notEligiblePanel = document.getElementById("not-eligible");
+        const outputPanel = document.getElementById("output");
+
+        function getIntValue(id) {
+            return parseInt(document.getElementById(id).value, 10);
+        }
+
+        function calculateEligibility(gestationalAgeWeeks, gestationalAgeDays, birthWeight) {
+            const gestationalAge = (gestationalAgeWeeks * 7) + gestationalAgeDays;
+            const maxGestationalAge = (30 * 7) + 6;
+
+            return gestationalAge <= maxGestationalAge || birthWeight < 1501;
+        }
+
+        function calculateWindow(gestationalAge) {
+
+        }
+
+        function updateOutput() {
+            notEligiblePanel.style.display = 'none';
+            outputPanel.style.display = 'none';
+
+            if(form.checkValidity()) {
+                const gestationalAgeWeeks = getIntValue("gestational_age_weeks");
+                const gestationalAgeDays = getIntValue("gestational_age_days");
+                const birthWeight = getIntValue("birth_weight");
+
+                const gestationalAge = (gestationalAgeWeeks * 7) + gestationalAgeDays;
+                const thirtyWeeksAndSixDays = (30 * 7) + 6;
+
+                if(gestationalAge <= thirtyWeeksAndSixDays || birthWeight < 1501) {
+                    outputPanel.style.display = 'block';
+                } else {
+                    notEligiblePanel.style.display = 'block';
+                }
+
+                console.log({
+                    gestationalAgeWeeks,
+                    gestationalAgeDays,
+                    birthWeight,
+                    dateOfBirth: document.getElementById("date_of_birth").value
+                })
+            }
+        }
+
+        form.addEventListener("input", updateOutput);
+        document.addEventListener("DOMContentLoaded", updateOutput);
+    </script>
+</body>
