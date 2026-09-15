@@ -85,7 +85,7 @@
             required
             min="22"
             max="42"
-            value="34"
+            value="30"
         />
 
         <label for="gestational_age_days">
@@ -97,18 +97,19 @@
             required
             min="0"
             max="6"
-            value="3"
+            value="0"
         />
 
         <label for="birth_weight">
-            Birth weight (grams):
+            Birth weight (grams) [200-4,500]:
         </label>
         <input
             id="birth_weight"
             type="number"
-            value="1151" 
+            value="1500" 
             required
-            min="0"
+            min="200"
+            max="4500"
         />
 
         <label for="date_of_birth">
@@ -118,7 +119,7 @@
             id="date_of_birth"
             type="date"
             required
-            value="2023-01-01"
+            value="2026-01-01"
         />
     </form>
     <div id="not-eligible" class="output">
@@ -128,6 +129,13 @@
            and 6 days) OR less than 1501g birth weight should be examined to screen for
            the presence of ROP (one criterion to be met for inclusion) [Evidence level: High
            (Grade: B)]
+        </p>
+    </div>
+    <div id="consider-eligible" class="output">
+        <h2>Consider for Examination</h2>
+        <p>
+            Infants born more than 1500g and between 31+0 weeks' and 31+6 weeks' gestational age should be
+            considered for examination. [Evidence level: Low (Grade: D)]
         </p>
     </div>
     <div id="screening-window" class="output">
@@ -156,11 +164,20 @@
             </div>
         </div>
     </div>
+    <div style="border-top: 1px solid silver; padding-top: 1em; margin-top: 1em;">
+        <h2>Disclaimer</h2>
+        <p style="font-size: 0.8em; color: gray;">
+            The results provided by this calculator are only indicative and should never be
+            used in place of, or in opposition to, guidance from qualified medical professionals.
+            If you have any feedback about this calculator, please get in touch with us by emailing guidelines@rcpch.ac.uk.
+        </p>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.5.0/build/global/luxon.min.js"></script>
     <script type="text/javascript">
         const form = document.querySelector("form");
         
         const notEligiblePanel = document.getElementById("not-eligible");
+        const considerEligiblePanel = document.getElementById("consider-eligible");
         const screeningWindowPanel = document.getElementById("screening-window");
 
         const windowStartDate = document.getElementById("window_start_date");
@@ -177,6 +194,17 @@
             const thirtyWeeksAndSixDays = (30 * 7) + 6;
 
             return gestationalAge <= thirtyWeeksAndSixDays || birthWeight < 1501;
+        }
+
+        function isConsiderable(gestationalAge, birthWeight) {
+            const thirtyOneWeeks = 31 * 7;
+            const thirtyOneWeeksAndSixDays = thirtyOneWeeks + 6;
+
+            // Born between 31+0 and 31+6 weeks GA, and >= 1501g (so not already
+            // captured by isEligible's birth-weight criterion)
+            return gestationalAge >= thirtyOneWeeks
+                && gestationalAge <= thirtyOneWeeksAndSixDays
+                && birthWeight >= 1501;
         }
 
         function calculateWindow(gestationalAgeDays, dateOfBirth) {
@@ -209,8 +237,34 @@
             return { start, end };
         }
 
+        function calculatePostnatalWindow(dateOfBirth) {
+            // 4 completed weeks postnatal age: 28-34 days after birth
+            const start = dateOfBirth.plus({ days: 28 });
+            const end = dateOfBirth.plus({ days: 34 });
+
+            return { start, end };
+        }
+
+        function renderWindow(start, end, dateOfBirth) {
+            screeningWindowPanel.style.display = 'block';
+
+            // DATE_SHORT means US users see MM/DD/YYYY and UK users see DD/MM/YYYY
+            const startDate = start.toLocaleString(luxon.DateTime.DATE_SHORT);
+            const startDaysFromBirth = start.diff(dateOfBirth, 'days').days;
+
+            const endDate = end.toLocaleString(luxon.DateTime.DATE_SHORT);
+            const endDaysFromBirth = end.diff(dateOfBirth, 'days').days;
+
+            windowStartDate.innerHTML = startDate;
+            windowStartDays.innerHTML = `${startDaysFromBirth} days from birth`;
+
+            windowEndDate.innerHTML = endDate;
+            windowEndDays.innerHTML = `${endDaysFromBirth} days from birth`;
+        }
+
         function updateOutput() {
             notEligiblePanel.style.display = 'none';
+            considerEligiblePanel.style.display = 'none';
             screeningWindowPanel.style.display = 'none';
 
             if(form.checkValidity()) {
@@ -224,22 +278,13 @@
                 const gestationalAge = (gestationalAgeWeeks * 7) + gestationalAgeDays;
 
                 if(isEligible(gestationalAge, birthWeight)) {
-                    screeningWindowPanel.style.display = 'block';
-
                     const { start, end } = calculateWindow(gestationalAge, dateOfBirth);
+                    renderWindow(start, end, dateOfBirth);
+                } else if(isConsiderable(gestationalAge, birthWeight)) {
+                    considerEligiblePanel.style.display = 'block';
 
-                    // DATE_SHORT means US users see MM/DD/YYYY and UK users see DD/MM/YYYY
-                    const startDate = start.toLocaleString(luxon.DateTime.DATE_SHORT);
-                    const startDaysFromBirth = start.diff(dateOfBirth, 'days').days;
-
-                    const endDate = end.toLocaleString(luxon.DateTime.DATE_SHORT);
-                    const endDaysFromBirth = end.diff(dateOfBirth, 'days').days;
-
-                    windowStartDate.innerHTML = startDate;
-                    windowStartDays.innerHTML = `${startDaysFromBirth} days from birth`;
-                    
-                    windowEndDate.innerHTML = endDate;
-                    windowEndDays.innerHTML = `${endDaysFromBirth} days from birth`;
+                    const { start, end } = calculatePostnatalWindow(dateOfBirth);
+                    renderWindow(start, end, dateOfBirth);
                 } else {
                     notEligiblePanel.style.display = 'block';
                 }
